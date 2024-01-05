@@ -24,6 +24,7 @@ fastify.get("/pcg", async (req, res) => {
       throw err;
     }
     res.send(rows);
+    console.log(rows);
   });
   return res;
 });
