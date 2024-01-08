@@ -18,6 +18,7 @@ fastify.get("/healthz", async () => {
   return { status: "ok" };
 });
 
+//Get users
 fastify.get("/pcg", async (req, res) => {
   await db.all("SELECT * FROM executions", (err, rows) => {
     if (err) {
@@ -29,8 +30,20 @@ fastify.get("/pcg", async (req, res) => {
   return res;
 });
 
-fastify.get("/html.txt", () => {
-  return readFileSync(resolvePath("html.txt"), "utf8");
+//Upsert users
+fastify.post("/pcg", async (req, res) => {
+  const { email, name } = req.body;
+  const sql =
+    "INSERT INTO EXECUTIONS (EMAIL, NAME) VALUES (?,?) ON CONFLICT (EMAIL) DO UPDATE SET COUNT = COUNT + 1 ";
+  await db.run(sql, [email, name], (err, rows) => {
+    if (err) {
+      res.status(500).send({ "error message": err });
+      return res;
+    }
+    res.status(201).send({ status: "ok" });
+  });
+  console.log(email, name);
+  return res;
 });
 
 try {

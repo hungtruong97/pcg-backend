@@ -1,4 +1,4 @@
-import { maskInfo } from "./utils.js";
+import { maskInfo } from "../pcg/utils.js/index.js";
 
 export async function get() {
   const response = await fetch("http://localhost:3000/pcg");
@@ -9,8 +9,10 @@ export async function get() {
     name = maskInfo(name);
     return { ...item, email, name };
   });
+  const totalCount = data.reduce((count, item) => {
+    count + item.count;
+  }, 0);
+  return `pcg has been executed for ${totalCount}`;
 
   console.log("All executions:", data);
 }
-// just testing
-await get();
