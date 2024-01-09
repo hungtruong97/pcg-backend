@@ -1,7 +1,6 @@
 /**
- *
+ * Mask name or email string by replacing certain segments with *
  * @param {string} text
- * @param {number} i
  */
 
 export function maskInfo(text) {
@@ -9,14 +8,14 @@ export function maskInfo(text) {
     const atIndex = text.indexOf("@");
     const dotIndex = text.indexOf(".");
     const firstCharacter = text.slice(0, 1);
-    const LastCharacterBeforeAt = text.slice(atIndex - 1, atIndex);
+    const lastCharacterBeforeAt = text.slice(atIndex - 1, atIndex);
     const maskedPart = "*".repeat(text.slice(1, atIndex - 1).length);
     const domainName = "*".repeat(text.slice(atIndex, dotIndex - 1).length);
     const domainExtension = text.slice(dotIndex);
     const maskedEmail =
       firstCharacter +
       maskedPart +
-      LastCharacterBeforeAt +
+      lastCharacterBeforeAt +
       "@" +
       domainName +
       domainExtension;
@@ -31,5 +30,3 @@ export function maskInfo(text) {
     return maskedName;
   }
 }
-
-maskInfo("Hung Truong");
