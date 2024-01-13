@@ -34,11 +34,10 @@ fastify.post("/add", async (req, res) => {
     "SELECT EXISTS(SELECT * FROM users WHERE email = ?)",
     [email]
   );
-  const isUserExist = userResult;
 
   //if email does not exist in the users table
   try {
-    if (isUserExist.count === 0) {
+    if (userResult === 0) {
       //add the new user in the users table
       await db.run("INSERT INTO users (email, name) VALUES (?,?)", [
         email,
