@@ -26,17 +26,30 @@ fastify.get("/pcg", async (req, res) => {
   return res;
 });
 
-//Add users
+//Upsert users
 fastify.post("/add", async (req, res) => {
   const { email, name } = req.body;
 
-  const userResult = await db.get(
-    "SELECT EXISTS(SELECT * FROM users WHERE email = ?)",
-    [email]
-  );
+  //begin the transaction
+  await db.run("BEGIN");
 
-  //if email does not exist in the users table
   try {
+    //check if email exists in users table
+    const userResult = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT COUNT(*) as count FROM users WHERE email = ?",
+        [email],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row.count);
+          }
+        }
+      );
+    });
+
+    //if email does not exist in the users table
     if (userResult === 0) {
       //add the new user in the users table
       await db.run("INSERT INTO users (email, name) VALUES (?,?)", [
@@ -48,78 +61,54 @@ fastify.post("/add", async (req, res) => {
         "INSERT INTO executions (email, name, count) VALUES (?,?, 1)",
         [email, name]
       );
-      // await db.run("COMMIT");
+      await db.run("COMMIT");
       res.status(200).send({ Message: "User added", userResult: userResult });
     } else {
-      throw new Error("Error");
+      //check if email and name exists in the executions table
+      const executionsResult = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT COUNT(*) as count FROM executions WHERE EMAIL = ? AND NAME = ?",
+          [email, name],
+          (err, row) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(row.count);
+            }
+          }
+        );
+      });
+
+      //if the execution does not exist in the executions table
+      if (executionsResult === 0) {
+        throw new Error(
+          "This email already exists, but maybe you got the wrong name?"
+        );
+      } else {
+        //if the execution already exists
+        await db.run(
+          "UPDATE executions set COUNT = COUNT + 1 where email = ? and name =?",
+          [email, name],
+          (err, rows) => {
+            if (err) {
+              throw err;
+            }
+            res.status(200).send({
+              Message:
+                "This user already exists in the database. Execution count updated.",
+            });
+          }
+        );
+        await db.run("COMMIT");
+      }
     }
   } catch (err) {
-    res.send(500).send(err.message);
+    //rollback transaction
+    await db.run("ROLLBACK");
+    res.status(500).send({ "Error Message": err.message });
   }
-
   return res;
 });
-
-// //Upsert users
-// fastify.post("/pcg", async (req, res) => {
-//   const { email, name } = req.body;
-//   // begin the transaction;
-//   await db.run("BEGIN");
-
-//   try {
-//     //check if email exists in users table
-//     const userResult = await db.get(
-//       "SELECT COUNT(*) as count FROM users WHERE email = ?",
-//       [email]
-//     );
-//     const isUserExist = userResult.count;
-
-//     //if email does not exist in the users table
-//     if (isUserExist === 0) {
-//       //add the new user in the users table
-//       await db.run("INSERT INTO users (email, name) VALUES (?,?)", [
-//         email,
-//         name,
-//       ]);
-//       //add the new user in the executions table with count = 1
-//       await db.run(
-//         "INSERT INTO executions (email, name, count) VALUES (?,?, 1)",
-//         [email, name]
-//       );
-//       // await db.run("COMMIT");
-//       res.status(200).send({ Message: "User added", userResult: userResult });
-//     } else {
-//       //check if email and name exists in the executions table
-//       const executionsResult = await db.get(
-//         "SELECT COUNT(*) as count FROM executions WHERE EMAIL = ? AND NAME = ?",
-//         [email, name]
-//       );
-
-//       //if the execution does not exist in the executions table
-//       if (executionsResult.count === 0) {
-//         throw new Error("This user already exists");
-//       } else {
-//         //if the execution already exists
-//         await db.run(
-//           "UPDATE executions set COUNT = COUNT + 1 where email = ? and name =?",
-//           [email, name]
-//         );
-//         //commit the transaction
-//         // await db.run("COMMIT");
-//         res
-//           .status(200)
-//           .send({ Message: "Execution count updated", userResult: userResult });
-//       }
-//     }
-//   } catch (err) {
-//     //rollback transaction;
-//     console.log(err);
-//     await db.run("ROLLBACK");
-//     res.status(500).send({ "Error message": err.message });
-//   }
-//   console.log(email, name);
-//   return res;
-// });
 
 try {
   await fastify.listen({ port: 3000 });
